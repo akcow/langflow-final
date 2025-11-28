@@ -38,7 +38,34 @@ type UseDoubaoPreviewReturn = {
   lastUpdated?: string;
 };
 
-function parsePreviewData(componentName: string | undefined, data: any): DoubaoPreviewDescriptor | null {
+type OutputLogValue = OutputLogType | OutputLogType[] | undefined;
+
+function normalizeOutputLogs(outputData: OutputLogValue): OutputLogType[] {
+  if (!outputData) return [];
+  const logs = Array.isArray(outputData) ? outputData : [outputData];
+  return logs.filter((log): log is OutputLogType => Boolean(log)).reverse();
+}
+
+function searchPreviewInOutputs(
+  outputs: Record<string, OutputLogValue>,
+  matcher: (log: OutputLogType) => DoubaoPreviewDescriptor | null
+): { preview: DoubaoPreviewDescriptor; rawLog: OutputLogType } | null {
+  for (const outputData of Object.values(outputs)) {
+    const logs = normalizeOutputLogs(outputData);
+    for (const log of logs) {
+      const candidate = matcher(log);
+      if (candidate) {
+        return { preview: candidate, rawLog: log };
+      }
+    }
+  }
+  return null;
+}
+
+function parsePreviewData(componentName: string | undefined, rawPayload: any): DoubaoPreviewDescriptor | null {
+  if (!rawPayload || typeof rawPayload !== 'object') return null;
+  const data = rawPayload;
+
   // 优先解析新的doubao_preview格式
   if (data.doubao_preview) {
     const fromData = data.doubao_preview;
@@ -77,6 +104,34 @@ function parsePreviewData(componentName: string | undefined, data: any): DoubaoP
         height: data.height,
       },
       error: data.preview_error,
+    };
+  }
+
+  const videos = Array.isArray(data.videos) ? data.videos : [];
+  const primaryVideo =
+    videos.find((video) => video?.video_url || video?.url) ||
+    (data.video_url
+      ? {
+          video_url: data.video_url,
+          cover_preview_base64: data.cover_preview_base64,
+          cover_url: data.cover_url,
+          duration: data.duration,
+        }
+      : null);
+  if (primaryVideo?.video_url) {
+    return {
+      token: data.preview_token || data.task_id || data.id || primaryVideo.video_url,
+      kind: 'video',
+      generated_at: data.generated_at,
+      available: true,
+      payload: {
+        video_url: primaryVideo.video_url,
+        cover_preview_base64: primaryVideo.cover_preview_base64 || data.cover_preview_base64,
+        cover_url: primaryVideo.cover_url || data.cover_url || primaryVideo.last_frame_url,
+        duration: primaryVideo.duration || data.duration,
+        videos: videos.length ? videos : undefined,
+      },
+      error: data.preview_error || data.warning,
     };
   }
 
@@ -122,30 +177,29 @@ export function useDoubaoPreview(nodeId: string, componentName?: string): UseDou
     }
 
     // 查找包含doubao数据的输出字段
-    const allOutputs = messageData.data.outputs;
+    const allOutputs = messageData.data.outputs as Record<string, OutputLogValue>;
     let preview: DoubaoPreviewDescriptor | null = null;
     let rawMessage = messageData;
 
-    // 1. 优先查找新的doubao_preview格式
-    for (const [outputKey, outputData] of Object.entries(allOutputs)) {
-      if (outputData?.message?.data?.doubao_preview) {
-        preview = parsePreviewData(componentName, outputData.message.data);
-        rawMessage = outputData as OutputLogType;
-        break;
+    // 1. ??????doubao_preview??
+    const prioritized = searchPreviewInOutputs(allOutputs, (log) => {
+      const payload = log?.message;
+      if (payload?.doubao_preview) {
+        return parsePreviewData(componentName, payload);
       }
-    }
+      return null;
+    });
 
-    // 2. fallback到传统字段查找
-    if (!preview) {
-      for (const [outputKey, outputData] of Object.entries(allOutputs)) {
-        const data = outputData?.message?.data;
-        if (data) {
-          preview = parsePreviewData(componentName, data);
-          if (preview) {
-            rawMessage = outputData as OutputLogType;
-            break;
-          }
-        }
+    if (prioritized) {
+      preview = prioritized.preview;
+      rawMessage = prioritized.rawLog;
+    } else {
+      const fallback = searchPreviewInOutputs(allOutputs, (log) =>
+        parsePreviewData(componentName, log?.message)
+      );
+      if (fallback) {
+        preview = fallback.preview;
+        rawMessage = fallback.rawLog;
       }
     }
 

@@ -145,6 +145,18 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
   setFlowPool: (flowPool) => {
     set({ flowPool });
   },
+  clearFlowPoolForNodes: (nodeIds: string[]) => {
+    if (!nodeIds?.length) return;
+    set((state) => {
+      const newFlowPool = cloneDeep(state.flowPool);
+      nodeIds.forEach((id) => {
+        if (id in newFlowPool) {
+          delete newFlowPool[id];
+        }
+      });
+      return { flowPool: newFlowPool };
+    });
+  },
   updateToolMode: (nodeId: string, toolMode: boolean) => {
     get().setNode(nodeId, (node) => {
       const newNode = cloneDeep(node);

@@ -32,6 +32,7 @@ import NodeUpdateComponent from "./components/NodeUpdateComponent";
 import { NodeIcon } from "./components/nodeIcon";
 import RenderInputParameters from "./components/RenderInputParameters";
 import DoubaoPreviewPanel from "./components/DoubaoPreviewPanel";
+import { isDoubaoComponent } from "../hooks/use-doubao-preview";
 import { useBuildStatus } from "./hooks/use-get-build-status";
 
 const MemoizedRenderInputParameters = memo(RenderInputParameters);
@@ -617,14 +618,9 @@ function GenericNode({
             </div>
           )}
           {/* 豆包组件预览面板 */}
-          {showNode && typeof data.node?.name === "string" && [
-            "DoubaoImageGenerator",
-            "DoubaoImageEditor",
-            "DoubaoVideoGenerator",
-            "DoubaoTTS"
-          ].includes(data.node.name) && (
+          {showNode && isDoubaoComponent(data.type) && (
             <div className="px-4 pb-3">
-              <DoubaoPreviewPanel nodeId={data.id} componentName={data.node.name} />
+              <DoubaoPreviewPanel nodeId={data.id} componentName={data.type} />
             </div>
           )}
         </div>

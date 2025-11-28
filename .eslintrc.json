@@ -15,10 +15,10 @@
             "./tsconfig.node.json",
             "./tsconfig.json"
         ],
-        "extraFileExtensions:": [
+        "extraFileExtensions": [
             ".mdx"
         ],
-        "extensions:": [
+        "extensions": [
             ".mdx"
         ]
     },

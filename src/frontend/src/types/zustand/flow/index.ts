@@ -104,6 +104,7 @@ export type FlowStoreType = {
   }>;
   hasIO: boolean;
   setFlowPool: (flowPool: FlowPoolType) => void;
+  clearFlowPoolForNodes: (nodeIds: string[]) => void;
   addDataToFlowPool: (data: VertexBuildTypeAPI, nodeId: string) => void;
   CleanFlowPool: () => void;
   isBuilding: boolean;
