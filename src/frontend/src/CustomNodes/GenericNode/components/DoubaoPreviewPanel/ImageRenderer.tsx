@@ -7,9 +7,10 @@ type ImageRendererProps = {
   onError?: (error: Error) => void;
   onMeta?: (meta: any) => void;
   meta?: Record<string, any>;
+  onExpand?: () => void;
 };
 
-const ImageRenderer = ({ src, size, onError, onMeta, meta }: ImageRendererProps) => {
+const ImageRenderer = ({ src, size, onError, onMeta, meta, onExpand }: ImageRendererProps) => {
   const [imageError, setImageError] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -41,6 +42,14 @@ const ImageRenderer = ({ src, size, onError, onMeta, meta }: ImageRendererProps)
     );
   }
 
+  const handleExpand = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      onExpand?.();
+    },
+    [onExpand],
+  );
+
   return (
     <div className="group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.02]">
       <img
@@ -52,11 +61,16 @@ const ImageRenderer = ({ src, size, onError, onMeta, meta }: ImageRendererProps)
         onLoad={handleImageLoad}
         loading="lazy"
       />
-      <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/20 group-hover:opacity-100">
+      <button
+        type="button"
+        aria-label="放大预览"
+        onClick={handleExpand}
+        className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 group-hover:bg-black/30 group-hover:opacity-100"
+      >
         <div className="rounded-full bg-white/90 p-2 shadow-lg">
           <ForwardedIconComponent name="ZoomIn" className="h-4 w-4 text-gray-800" />
         </div>
-      </div>
+      </button>
       {size && (
         <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-xs text-white">
           {size}
